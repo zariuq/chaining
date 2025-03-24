@@ -25,6 +25,12 @@
 (= (fromNat Z) 0)
 (= (fromNat (S $k)) (+ 1 (fromNat $k)))
 
+(= (minNat $x $y)
+  (let $nx (fromNat $x)
+    (let $ny (fromNat $y)
+      (let $nm ((py-atom min) $nx $ny)
+        (fromNumber $nm)))))
+
 ;;;;;;;;;;;;;;;;;;;;
 ;; Knowledge base ;;
 ;;;;;;;;;;;;;;;;;;;;
@@ -42,6 +48,7 @@
                   (-> (→ $p $q)           ; Premise 1
                       (-> $p              ; Premise 2
                           $q))))          ; Conclusion
+
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
@@ -65,29 +72,50 @@
 ;; A result is the query with its variables grounded, fully or
 ;; partially.  If multiple results are possible, they are returned as
 ;; a superposition.
-(: bc (-> $a                            ; Knowledge base space
-          Nat                           ; Maximum depth
-          $b                            ; Query
-          $b))                          ; Result
+; (: bc (-> $a                            ; Knowledge base space
+;           Nat                           ; Maximum depth
+;           $b                            ; Query
+;           $b))                          ; Result
+; ;; Base case
+; (= (bc $kb $_ (: $prf $ccln)) (match $kb (: $prf $ccln) (: $prf $ccln)))
+; ;; Recursive step
+; (= (bc $kb (S $k) (: ($prfabs $prfarg) $ccln))
+;    (let* (((: $prfabs (-> $prms $ccln)) (bc $kb $k (: $prfabs (-> $prms $ccln))))
+;           ((: $prfarg $prms) (bc $kb $k (: $prfarg $prms))))
+;      (: ($prfabs $prfarg) $ccln)))
+
+(: bc (-> $kb          ; Knowledge base space
+          Nat          ; Maximum depth
+          $goal        ; Query
+          $goal))      ; Result
+
 ;; Base case
-(= (bc $kb $_ (: $prf $ccln)) (match $kb (: $prf $ccln) (: $prf $ccln)))
+(= (bc $kb $_ (: $proof $conclusion))
+   (match $kb (: $proof $conclusion) (: $proof $conclusion)))
+
 ;; Recursive step
-(= (bc $kb (S $k) (: ($prfabs $prfarg) $ccln))
-   (let* (((: $prfabs (-> $prms $ccln)) (bc $kb $k (: $prfabs (-> $prms $ccln))))
-          ((: $prfarg $prms) (bc $kb $k (: $prfarg $prms))))
-     (: ($prfabs $prfarg) $ccln)))
+(= (bc $kb (S $k) (: ($rule $arg) $conclusion))
+   (let* (
+          ((: $rule (-> $premises $conclusion))
+            (bc $kb $k (: $rule (-> $premises $conclusion))))
+
+          ((: $arg $premises)
+            (bc $kb $k (: $arg $premises)))
+         )
+     (: ($rule $arg) $conclusion)))
+
 
 ;; Test curried backward chainer
 !(assertEqual
-  (bc &kb (fromNumber 0) (: $prf A))
+  (bc &kb (fromNumber 0) (: $proof A))
   (: a A))
 !(assertEqual
-  (bc &kb (fromNumber 2) (: $prf B))
+  (bc &kb (fromNumber 2) (: $proof B))
   (: ((ModusPonens ab) a) B))
 !(assertEqual
-  (bc &kb (fromNumber 3) (: $prf C))
+  (bc &kb (fromNumber 3) (: $proof C))
   (: ((ModusPonens bc) ((ModusPonens ab) a)) C))
-
+  ; ρ
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Forward chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;
@@ -111,19 +139,56 @@
 ;; A result is a conclusion that can be reached from the source.  If
 ;; multiple results are possible, they are returned as a
 ;; superposition.
-(: fc (-> $a                            ; Knowledge base space
-          Nat                           ; Maximum depth
-          $b                            ; Source
-          $b))                          ; Conclusion
+; (: fcold (-> $a                            ; Knowledge base space
+;           Nat                           ; Maximum depth
+;           $b                            ; Source
+;           $b))                          ; Conclusion
 ;; Base case
-(= (fc $kb $_ (: $prf $prms)) (: $prf $prms))
-;; Recursive step
-(= (fc $kb (S $k) (: $prfarg $prms))
-   (let (: $prfabs (-> $prms $ccln)) (bc $kb $k (: $prfabs (-> $prms $ccln)))
-     (fc $kb $k (: ($prfabs $prfarg) $ccln))))
-(= (fc $kb (S $k) (: $prfabs (-> $prms $ccln)))
-    (let (: $prfarg $prms) (bc $kb $k (: $prfarg $prms))
-     (fc $kb $k (: ($prfabs $prfarg) $ccln))))
+; (= (fcold $kb $_ (: $prf $prms)) (: $prf $prms))
+; ;; Recursive step
+; (= (fcold $kb (S $k) (: $prfarg $prms))
+;    (let (: $prfabs (-> $prms $ccln)) (bc $kb $k (: $prfabs (-> $prms $ccln)))
+;      (fcold $kb $k (: ($prfabs $prfarg) $ccln))))
+; (= (fcold $kb (S $k) (: $prfabs (-> $prms $ccln)))
+;     (let (: $prfarg $prms) (bc $kb $k (: $prfarg $prms))
+;      (fcold $kb $k (: ($prfabs $prfarg) $ccln))))
+
+; ;; This 'new' fc version is added by Zar
+; (: fc (-> $a                            ; Knowledge base space
+;           Nat                           ; Maximum depth
+;           $b                            ; Source
+;           $b))                          ; Conclusion
+
+; (= (fc $kb $_ (: $prf $prms)) (: $prf $prms))
+
+; (= (fc $kb (S $k) (: $prfarg $prms))
+;    (let (: $prfabs (-> $prms $ccln)) (bc $kb (minNat $k (fromNumber 1)) (: $prfabs (-> $prms $ccln)))
+;      (fc $kb $k (: ($prfabs $prfarg) $ccln))))
+; (= (fc $kb (S $k) (: $prfabs (-> $prms $ccln)))
+;     (let (: $prfarg $prms) (bc $kb (minNat $k (fromNumber 1)) (: $prfarg $prms))
+;      (fc $kb $k (: ($prfabs $prfarg) $ccln))))
+
+(: fc (-> $kb         ; Knowledge base space
+          Nat         ; Maximum depth
+          $goal       ; Source expression
+          $goal))     ; Resulting conclusions
+
+;; Base case
+(= (fc $kb $_ (: $proof $premises))
+   (: $proof $premises))
+
+;; Recursive step #1
+(= (fc $kb (S $k) (: $arg $premises))
+   (let (: $rule (-> $premises $conclusion))
+        (bc $kb $k (: $rule (-> $premises $conclusion)))
+     (fc $kb $k (: ($rule $arg) $conclusion))))
+
+;; Recursive step #2
+(= (fc $kb (S $k) (: $rule (-> $premises $conclusion)))
+   (let (: $arg $premises)
+        (bc $kb $k (: $arg $premises))
+     (fc $kb $k (: ($rule $arg) $conclusion))))
+
 
 ;; Test curried forward chainer
 !(assertEqualToResult
