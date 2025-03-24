@@ -78,10 +78,6 @@
 (: Z Nat)
 (: S (-> Nat Nat))
 
-;; Define <=
-(: <= (-> $a $a Bool))
-(= (<= $x $y) (or (< $x $y) (== $x $y)))
-
 ;; Define cast functions between Nat and Number
 (: fromNumber (-> Number Nat))
 (= (fromNumber $n) (if (<= $n 0) Z (S (fromNumber (- $n 1)))))
@@ -141,7 +137,10 @@
   ("1" "2" "3"))
 
 ;; Fold a tuple from right to left
-(: foldr (-> (-> $a $b $b) $b $c $d))
+(: foldr (-> (-> $a $b $b)  ; Binary operator
+             $b             ; Initial value
+             $c             ; Container
+             $b))
 (= (foldr $f $i $xs)
    (if (== $xs ())
        $i
