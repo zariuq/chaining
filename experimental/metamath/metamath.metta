@@ -103,32 +103,32 @@
 
 ;; Base cases
 ;; Match the knowledge base
-(= (bc $kb $env $_ (: $prf $thrm))
-   (match $kb (: $prf $thrm) (: $prf $thrm)))
+(= (bc $kb $env $_ (: $proof $theorem))
+   (match $kb (: $proof $theorem) (: $proof $theorem)))
 ;; Match the environment
-(= (bc $kb $env $_ (: $prf $thrm))
-   (match' $env (: $prf $thrm) (: $prf $thrm)))
+(= (bc $kb $env $_ (: $proof $theorem))
+   (match' $env (: $proof $theorem) (: $proof $theorem)))
 
 ;; Recursive step
 ;; Unary proof application
-(= (bc $kb $env (S $k) (: ($prfabs $prfarg) $thrm))
+(= (bc $kb $env (S $k) (: ($rule $arg) $theorem))
    (let* (;; Recurse on unary rule
-          ((: $prfabs (-> $prms $thrm))
-           (bc $kb $env $k (: $prfabs (-> $prms $thrm))))
+          ((: $rule (-> $premises $theorem))
+           (bc $kb $env $k (: $rule (-> $premises $theorem))))
           ;; Recurse on premise
-          ((: $prfarg $prms)
-           (bc $kb $env $k (: $prfarg $prms))))
-     (: ($prfabs $prfarg) $thrm)))
+          ((: $arg $premises)
+           (bc $kb $env $k (: $arg $premises))))
+     (: ($rule $arg) $theorem)))
 ;; Binary proof application
-(= (bc $kb $env (S $k) (: ($prfabs $prfarg1 $prfarg2) $thrm))
+(= (bc $kb $env (S $k) (: ($rule $arg1 $arg2) $theorem))
    (let* (;; Recurse on binary rule
-          ((: $prfabs (-> $prms1 $prms2 $thrm))
-           (bc $kb $env $k (: $prfabs (-> $prms1 $prms2 $thrm))))
+          ((: $rule (-> $premises1 $premises2 $theorem))
+           (bc $kb $env $k (: $rule (-> $premises1 $premises2 $theorem))))
           ;; Recurse on premise 1
-          ((: $prfarg1 $prms1) (bc $kb $env $k (: $prfarg1 $prms1)))
+          ((: $arg1 $premises1) (bc $kb $env $k (: $arg1 $premises1)))
           ;; Recurse on premise 2
-          ((: $prfarg2 $prms2) (bc $kb $env $k (: $prfarg2 $prms2))))
-     (: ($prfabs $prfarg1 $prfarg2) $thrm)))
+          ((: $arg2 $premises2) (bc $kb $env $k (: $arg2 $premises2))))
+     (: ($rule $arg1 $arg2) $theorem)))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; Knowledge base ;;
@@ -146,18 +146,66 @@
 
 ;; Rule 1 of [Hamilton] p. 73.
 ;; https://us.metamath.org/mpeuni/ax-mp.html
+;  ${
+;     $( Minor premise for modus ponens. $)
+;     min $e |- ph $.
+;     $( Major premise for modus ponens. $)
+;     maj $e |- ( ph -> ps ) $.
+;     $( Rule of Modus Ponens.  The postulated inference rule of propositional
+;        calculus.  See e.g.  Rule 1 of [Hamilton] p. 73.  The rule says, "if
+;        ` ph ` is true, and ` ph ` implies ` ps ` , then ` ps ` must also be
+;        true."  This rule is sometimes called "detachment," since it detaches
+;        the minor premise from the major premise.  "Modus ponens" is short for
+;        "modus ponendo ponens," a Latin phrase that means "the mood that by
+;        affirming affirms" [Sanford] p. 39.  This rule is similar to the rule of
+;        modus tollens ~ mto .
+
+;        Note:  In some web page displays such as the Statement List, the symbols
+;        "&" and "=>" informally indicate the relationship between the hypotheses
+;        and the assertion (conclusion), abbreviating the English words "and" and
+;        "implies."  They are not part of the formal language.  (Contributed by
+;        NM, 5-Aug-1993.) $)
+;     ax-mp $a |- ps $.
+;   $}
 !(add-atom &kb (: ax-mp (-> $𝜑 (→ $𝜑 $𝜓) $𝜓)))
 
 ;; Axiom Simp. Axiom A1 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-1.html
+; $( Axiom _Simp_.  Axiom A1 of [Margaris] p. 49.  One of the 3 axioms of
+;      propositional calculus.  The 3 axioms are also given as Definition 2.1 of
+;      [Hamilton] p. 28.  This axiom is called _Simp_ or "the principle of
+;      simplification" in _Principia Mathematica_ (Theorem *2.02 of
+;      [WhiteheadRussell] p. 100) because "it enables us to pass from the joint
+;      assertion of ` ph ` and ` ps ` to the assertion of ` ph ` simply."
+;      (Contributed by NM, 5-Aug-1993.) $)
+;   ax-1 $a |- ( ph -> ( ps -> ph ) ) $.
 !(add-atom &kb (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
 
 ;; Axiom Frege. Axiom A2 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-2.html
+; $( Axiom _Frege_.  Axiom A2 of [Margaris] p. 49.  One of the 3 axioms of
+;      propositional calculus.  It "distributes" an antecedent over two
+;      consequents.  This axiom was part of Frege's original system and is known
+;      as _Frege_ in the literature.  It is also proved as Theorem *2.77 of
+;      [WhiteheadRussell] p. 108.  The other direction of this axiom also turns
+;      out to be true, as demonstrated by ~ pm5.41 .  (Contributed by NM,
+;      5-Aug-1993.) $)
+;   ax-2 $a |- ( ( ph -> ( ps -> ch ) ) -> ( ( ph -> ps ) -> ( ph -> ch ) ) ) $.
 !(add-atom &kb (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
 
 ;; Axiom Transp. Axiom A3 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-3.html
+;   $( Axiom _Transp_.  Axiom A3 of [Margaris] p. 49.  One of the 3 axioms of
+;      propositional calculus.  It swaps or "transposes" the order of the
+;      consequents when negation is removed.  An informal example is that the
+;      statement "if there are no clouds in the sky, it is not raining" implies
+;      the statement "if it is raining, there are clouds in the sky."  This axiom
+;      is called _Transp_ or "the principle of transposition" in _Principia
+;      Mathematica_ (Theorem *2.17 of [WhiteheadRussell] p. 103).  We will also
+;      use the term "contraposition" for this principle, although the reader is
+;      advised that in the field of philosophical logic, "contraposition" has a
+;      different technical meaning.  (Contributed by NM, 5-Aug-1993.) $)
+;   ax-3 $a |- ( ( -. ph -> -. ps ) -> ( ps -> ph ) ) $.
 !(add-atom &kb (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
 
 ;;;;;;;;;;
@@ -175,7 +223,7 @@
                        Nil)))
      (fromNumber 1)
      (: (ax-mp mp2.1 mp2.3) (→ 𝜓 𝜒)))
-     ;; (: $prf (→ 𝜓 𝜒)))
+     ;; (: $proof (→ 𝜓 𝜒)))
 
 ;; Test https://us.metamath.org/mpeuni/mp2.html
 ;;
@@ -188,7 +236,7 @@
                        Nil)))
      (fromNumber 2)
      (: (ax-mp mp2.2 (ax-mp mp2.1 mp2.3)) 𝜒))
-     ;; (: $prf 𝜒))
+     ;; (: $proof 𝜒))
 
 ;; Test https://us.metamath.org/mpeuni/mp2b.html
 ;;
@@ -201,7 +249,7 @@
                        Nil)))
      (fromNumber 2)
      (: (ax-mp (ax-mp mp2b.1 mp2b.2) mp2b.3) 𝜒))
-     ;; (: $prf 𝜒))
+     ;; (: $proof 𝜒))
 
 ;; Test https://us.metamath.org/mpeuni/a1i.html
 ;;
@@ -211,4 +259,4 @@
      (Cons (: a1i.1 𝜑) Nil)
      (fromNumber 1)
      (: (ax-mp a1i.1 ax-1) (→ 𝜓 𝜑)))
-     ;; (: $prf (→ 𝜓 𝜑)))
+     ;; (: $proof (→ 𝜓 𝜑)))
